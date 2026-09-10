@@ -1,0 +1,72 @@
+{
+  "version": "1.0.0",
+  "categories": {
+    "programming_languages": [
+      "Python", "JavaScript", "TypeScript", "Java", "C", "C++", "C#", "Go", "Golang", "Rust",
+      "Ruby", "PHP", "Swift", "Kotlin", "Scala", "R", "Dart", "Julia", "Haskell", "Lua",
+      "Perl", "Elixir", "Clojure", "MATLAB", "Shell", "Bash", "PowerShell", "Solidity",
+      "Groovy", "Assembly", "Objective-C", "F#", "Visual Basic", "SQL"
+    ],
+    "backend": [
+      "FastAPI", "Django", "Flask", "Node.js", "Express", "Express.js", "NestJS", "Spring",
+      "Spring Boot", "Ruby on Rails", "ASP.NET", "ASP.NET Core", ".NET", "Laravel", "Symfony",
+      "Koa", "Hapi", "Gin", "Fiber", "Echo", "Actix", "Rocket", "Tornado", "Celery",
+      "REST", "RESTful APIs", "REST APIs", "GraphQL", "gRPC", "WebSockets", "Socket.io",
+      "Microservices", "Event-Driven Architecture", "Kafka", "RabbitMQ", "Apache Pulsar",
+      "Message Queues", "Service-Oriented Architecture", "API Gateway", "Reverse Proxy"
+    ],
+    "frontend": [
+      "React", "React.js", "React Native", "Angular", "Vue", "Vue.js", "Svelte", "Next.js",
+      "Nuxt.js", "Remix", "Gatsby", "HTML", "HTML5", "CSS", "CSS3", "Sass", "SCSS", "Less",
+      "Tailwind", "Tailwind CSS", "Bootstrap", "Material-UI", "MUI", "Chakra UI", "Ant Design",
+      "Shadcn UI", "Styled Components", "Emotion", "Redux", "Redux Toolkit", "Zustand", "MobX",
+      "Recoil", "React Query", "TanStack Query", "Vite", "Webpack", "Rollup", "Babel",
+      "Responsive Design", "Mobile-First Design", "Web Accessibility", "WCAG", "SPA", "PWA"
+    ],
+    "databases": [
+      "PostgreSQL", "MySQL", "MongoDB", "Redis", "SQLite", "Elasticsearch", "Cassandra",
+      "Oracle", "Microsoft SQL Server", "MSSQL", "MariaDB", "DynamoDB", "Couchbase",
+      "Neo4j", "Firebase Firestore", "Supabase", "CockroachDB", "ClickHouse", "TimescaleDB",
+      "Snowflake", "BigQuery", "Amazon Redshift", "Prisma", "SQLAlchemy", "TypeORM",
+      "Hibernate", "Mongoose", "Database Indexing", "Query Optimization", "Database Replication",
+      "Data Modeling", "ACID Transactions", "NoSQL"
+    ],
+    "cloud": [
+      "AWS", "Amazon Web Services", "Azure", "Microsoft Azure", "GCP", "Google Cloud Platform",
+      "AWS EC2", "AWS S3", "AWS Lambda", "AWS RDS", "AWS DynamoDB", "AWS ECS", "AWS EKS",
+      "AWS CloudFront", "AWS IAM", "AWS SQS", "AWS SNS", "Azure App Services", "Azure Functions",
+      "Azure Blob Storage", "Google Cloud Storage", "Google Compute Engine", "Google Cloud Run",
+      "Google Cloud Functions", "Serverless", "Cloudflare", "DigitalOcean", "Heroku", "Vercel"
+    ],
+    "devops": [
+      "Docker", "Kubernetes", "K8s", "Docker Compose", "CI/CD", "Continuous Integration",
+      "Continuous Deployment", "GitHub Actions", "GitLab CI", "Jenkins", "CircleCI",
+      "Travis CI", "ArgoCD", "Terraform", "Ansible", "Puppet", "Chef", "Prometheus",
+      "Grafana", "ELK Stack", "Logstash", "Kibana", "Datadog", "New Relic", "Sentry",
+      "Nginx", "Apache", "Traefik", "Linux", "Ubuntu", "Debian", "CentOS", "Alpine",
+      "Git", "GitHub", "GitLab", "Bitbucket", "Semantic Versioning", "Infrastructure as Code"
+    ],
+    "ai_ml": [
+      "NumPy", "Pandas", "scikit-learn", "TensorFlow", "PyTorch", "Keras", "OpenCV",
+      "NLP", "Natural Language Processing", "Transformers", "Hugging Face", "LLMs",
+      "Large Language Models", "LangChain", "LlamaIndex", "BERT", "GPT", "Sentence-Transformers",
+      "spaCy", "NLTK", "Gensim", "Vector Databases", "Pinecone", "ChromaDB", "Milvus", "Weaviate",
+      "FAISS", "Embeddings", "Cosine Similarity", "Computer Vision", "Deep Learning",
+      "Machine Learning", "Neural Networks", "CNN", "RNN", "LSTM", "Reinforcement Learning",
+      "Model Deployment", "MLflow", "Kubeflow", "ONNX", "Data Preprocessing", "Feature Engineering"
+    ],
+    "tools_and_methods": [
+      "Agile", "Scrum", "Kanban", "Jira", "Confluence", "Postman", "Swagger", "OpenAPI",
+      "Unit Testing", "Integration Testing", "End-to-End Testing", "Pytest", "Jest", "Mocha",
+      "Cypress", "Playwright", "Selenium", "TDD", "BDD", "Code Review", "Design Patterns",
+      "OOP", "Object-Oriented Programming", "Functional Programming", "System Design",
+      "Clean Code", "SOLID Principles", "Debugging", "Performance Profiling"
+    ],
+    "soft_skills": [
+      "Communication", "Team Leadership", "Project Management", "Problem Solving",
+      "Critical Thinking", "Collaboration", "Mentorship", "Adaptability", "Time Management",
+      "Cross-functional Collaboration", "Stakeholder Management", "Conflict Resolution",
+      "Strategic Planning", "Presentation Skills", "Analytical Thinking"
+    ]
+  }
+}
