@@ -33,6 +33,7 @@ import {
   DollarSign,
   ArrowUpDown,
   RotateCcw,
+  Globe,
 } from 'lucide-react';
 
 type TabType = 'discovered' | 'saved' | 'manual' | 'history';
@@ -367,6 +368,20 @@ export const JobsPage: React.FC = () => {
     if (score >= 80) return 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30';
     if (score >= 60) return 'text-cyan-400 bg-cyan-500/10 border-cyan-500/30';
     return 'text-amber-400 bg-amber-500/10 border-amber-500/30';
+  };
+
+  const getSourceBadge = (source: string) => {
+    const s = (source || '').toLowerCase();
+    if (s.includes('greenhouse')) {
+      return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+    } else if (s.includes('remotive')) {
+      return 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20';
+    } else if (s.includes('arbeitnow')) {
+      return 'bg-purple-500/10 text-purple-400 border-purple-500/20';
+    } else if (s.includes('mock') || s.includes('development')) {
+      return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+    }
+    return 'bg-slate-800/60 text-slate-300 border-slate-700';
   };
 
   return (
@@ -788,21 +803,23 @@ export const JobsPage: React.FC = () => {
 
                     {/* Bottom Action Row */}
                     <div className="mt-5 pt-4 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-3">
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <span className={`px-2.5 py-1 rounded-lg border text-[11px] font-semibold flex items-center gap-1.5 ${getSourceBadge(job.source)}`}>
+                          <Globe className="h-3 w-3" />
+                          <span>Source: {job.source}</span>
+                        </span>
+
                         {job.url && (
                           <a
                             href={job.url}
                             target="_blank"
-                            rel="noreferrer"
-                            className="text-xs text-slate-400 hover:text-white flex items-center gap-1.5 transition-colors"
+                            rel="noopener noreferrer"
+                            className="px-3.5 py-1.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 hover:text-cyan-200 border border-cyan-500/30 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
                           >
-                            <span>Open Original Job</span>
-                            <ExternalLink className="h-3 w-3" />
+                            <ExternalLink className="h-3.5 w-3.5" />
+                            <span>View Original Job</span>
                           </a>
                         )}
-
-                        <span className="text-xs text-slate-600">•</span>
-                        <span className="text-xs text-slate-500">Source: {job.source}</span>
                       </div>
 
                       <div className="flex items-center gap-2">

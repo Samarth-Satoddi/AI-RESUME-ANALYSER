@@ -1,4 +1,6 @@
 from datetime import datetime, timezone
+import html
+import re
 from typing import List, Optional
 import httpx
 
@@ -8,13 +10,14 @@ from app.job_search.base import JobSource
 from app.job_search.schemas import JobSearchQuery, RawJobListing
 
 
-class ApiJobSource(JobSource):
+class RemotiveJobSource(JobSource):
     """
-    Adapter for official job board REST APIs.
-    Supports Remotive / Arbeitnow public developer APIs or custom enterprise endpoints
-    configured through environment variables. Never bypasses authentication or rate limits.
+    Adapter for official Remotive developer REST API.
+    Public developer feed providing legitimate remote developer and technology openings
+    without web scraping or bot circumvention.
+    Endpoint: https://remotive.com/api/remote-jobs
     """
-    source_name = "api_source"
+    source_name = "remotive"
 
     def __init__(self, api_url: Optional[str] = None, api_key: Optional[str] = None):
         self.api_url = api_url or settings.JOB_SEARCH_API_URL or "https://remotive.com/api/remote-jobs"
@@ -22,8 +25,8 @@ class ApiJobSource(JobSource):
         self.timeout = float(settings.JOB_SEARCH_TIMEOUT_SECONDS)
 
     async def search(self, query: JobSearchQuery) -> List[RawJobListing]:
-        """Query legitimate job API and map results into RawJobListing records."""
-        logger.info(f"ApiJobSource querying {self.api_url} for '{query.role}'")
+        """Query legitimate Remotive API and map results into RawJobListing records."""
+        logger.info(f"RemotiveJobSource querying {self.api_url} for '{query.role}'")
 
         params = {
             "search": query.role,
@@ -31,7 +34,7 @@ class ApiJobSource(JobSource):
         }
 
         headers = {
-            "User-Agent": "AI-Resume-Analyzer-JobAgent/1.0",
+            "User-Agent": "AI-Resume-Analyzer-JobAgent/1.0 (+https://github.com/Samarth-Satoddi/RESUME-ANALYSER-)",
             "Accept": "application/json",
         }
         if self.api_key:
@@ -43,7 +46,7 @@ class ApiJobSource(JobSource):
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.get(self.api_url, params=params, headers=headers)
                 if response.status_code != 200:
-                    logger.warning(f"ApiJobSource received status {response.status_code} from {self.api_url}")
+                    logger.warning(f"RemotiveJobSource received status {response.status_code} from {self.api_url}")
                     return []
 
                 payload = response.json()
@@ -58,29 +61,46 @@ class ApiJobSource(JobSource):
                         except Exception:
                             posted_date = None
 
+                    raw_desc = item.get("description", "")
+                    clean_desc = re.sub(r"<[^>]+>", " ", html.unescape(raw_desc))
+                    clean_desc = re.sub(r"\s+", " ", clean_desc).strip()
+
+                    raw_salary = item.get("salary") or ""
+                    salary_min, salary_max = None, None
+                    if raw_salary:
+                        numbers = [float(n.replace(",", "")) for n in re.findall(r"\d[\d,]*", raw_salary)]
+                        if len(numbers) >= 2:
+                            salary_min, salary_max = numbers[0], numbers[1]
+                        elif len(numbers) == 1:
+                            salary_min = numbers[0]
+
                     results.append(
                         RawJobListing(
                             external_id=str(item.get("id", "")),
-                            source="remotive_api" if "remotive" in self.api_url else "external_api",
+                            source="remotive",
                             title=item.get("title", ""),
-                            company=item.get("company_name") or item.get("company"),
-                            location=item.get("candidate_required_location") or item.get("location"),
-                            remote_type="remote" if item.get("job_type") == "remote" or "remotive" in self.api_url else None,
-                            employment_type=item.get("job_type"),
-                            salary_min=None,
-                            salary_max=None,
-                            currency=None,
-                            description=item.get("description", ""),
+                            company=item.get("company_name") or item.get("company") or "Unknown",
+                            location=item.get("candidate_required_location") or "Remote",
+                            remote_type="remote",
+                            employment_type=item.get("job_type") or "full-time",
+                            salary_min=salary_min,
+                            salary_max=salary_max,
+                            currency="USD" if "$" in raw_salary else None,
+                            description=clean_desc,
                             url=item.get("url"),
                             posted_at=posted_date,
                             collected_at=datetime.now(timezone.utc),
                         )
                     )
 
-            logger.info(f"ApiJobSource retrieved {len(results)} listings")
+            logger.info(f"RemotiveJobSource retrieved {len(results)} listings")
         except httpx.TimeoutException:
-            logger.warning(f"ApiJobSource request timed out after {self.timeout}s")
+            logger.warning(f"RemotiveJobSource request timed out after {self.timeout}s")
         except Exception as e:
-            logger.warning(f"ApiJobSource search error: {e}")
+            logger.warning(f"RemotiveJobSource search error: {e}")
 
         return results
+
+
+# Backward-compatible alias
+ApiJobSource = RemotiveJobSource

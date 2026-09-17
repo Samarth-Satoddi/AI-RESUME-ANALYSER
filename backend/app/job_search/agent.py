@@ -1,6 +1,6 @@
 import asyncio
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 import uuid
 
 from sqlalchemy.orm import Session
@@ -64,34 +64,38 @@ class JobSearchAgent:
         return queries[:3]
 
     @classmethod
-    async def fetch_from_sources(cls, queries: List[JobSearchQuery]) -> List[RawJobListing]:
+    async def fetch_from_sources(cls, queries: List[JobSearchQuery]) -> Tuple[List[RawJobListing], Dict[str, str], List[str]]:
         """
         Query enabled sources concurrently with timeout protection.
-        A failure in one source never breaks the overall search execution.
+        Strictly prevents silent fallback to mock data in production mode.
         """
-        provider_mode = settings.JOB_SEARCH_PROVIDER.lower()
-        active_sources = []
+        sources_cfg = getattr(settings, "JOB_SEARCH_SOURCES", "") or getattr(settings, "JOB_SEARCH_PROVIDER", "")
+        configured_names = [s.strip().lower() for s in sources_cfg.split(",") if s.strip()]
 
-        if provider_mode == "mock":
-            mock_src = SourceRegistry.get_source("mock_source")
-            if mock_src:
+        active_sources = []
+        is_mock_mode = any(name in ("mock", "mock_source") for name in configured_names)
+
+        if is_mock_mode:
+            logger.info("JobSearchAgent running in MOCK development mode.")
+            mock_src = SourceRegistry.get_source("mock") or SourceRegistry.get_source("mock_source")
+            if mock_src and mock_src.is_enabled:
                 active_sources.append(mock_src)
         else:
-            # Add configured live sources
-            for name in ["api_source", "company_careers", "search_provider"]:
+            # Production mode: query legitimate external sources only
+            for name in configured_names:
                 src = SourceRegistry.get_source(name)
-                if src and src.is_enabled:
+                if src and src.is_enabled and src not in active_sources:
                     active_sources.append(src)
 
-            # If no external sources were configured or enabled, fallback safely to mock
             if not active_sources:
-                logger.info("No active external job sources found; utilizing mock source.")
-                mock_src = SourceRegistry.get_source("mock_source")
-                if mock_src:
-                    active_sources.append(mock_src)
+                logger.warning(
+                    f"No active external job sources found for configured sources: {configured_names}. "
+                    "Refusing mock fallback in production mode."
+                )
 
         all_raw_listings: List[RawJobListing] = []
         source_errors: Dict[str, str] = {}
+        sources_queried = [src.source_name for src in active_sources]
 
         for q in queries:
             tasks = [src.search(q) for src in active_sources]
@@ -105,10 +109,10 @@ class JobSearchAgent:
                     all_raw_listings.extend(res)
 
         logger.info(
-            f"Collected {len(all_raw_listings)} total raw listings from {len(active_sources)} sources. "
+            f"Collected {len(all_raw_listings)} total raw listings from {len(active_sources)} sources ({sources_queried}). "
             f"Errors encountered: {len(source_errors)}"
         )
-        return all_raw_listings
+        return all_raw_listings, source_errors, sources_queried
 
     @classmethod
     def ensure_resume_analyzed(cls, db: Session, resume: Resume) -> Optional[ResumeVersion]:
@@ -198,12 +202,19 @@ class JobSearchAgent:
             queries = cls.generate_search_queries(base_query, resume_skill_names)
 
             # 4. Fetch raw listings
-            raw_listings = await cls.fetch_from_sources(queries)
+            raw_listings, source_errors, sources_queried = await cls.fetch_from_sources(queries)
             search_record.jobs_found = len(raw_listings)
             db.commit()
 
             if not raw_listings:
-                search_record.status = "completed"
+                if source_errors and len(source_errors) >= len(sources_queried) and sources_queried:
+                    search_record.status = "failed"
+                    search_record.error_message = (
+                        f"Unable to retrieve external jobs. Errors reported by: {', '.join(source_errors.keys())}."
+                    )
+                else:
+                    search_record.status = "completed"
+                    search_record.error_message = None
                 db.commit()
                 return search_record
 

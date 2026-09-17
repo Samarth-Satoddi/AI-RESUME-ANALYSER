@@ -383,6 +383,7 @@ class JobSearchService:
             .order_by(JobSearch.created_at.desc())
             .first()
         )
-        if not latest_search:
-            return []
-        return cls.get_search_results(db, user, latest_search.id, min_score=60.0)[:limit]
+        recs = cls.get_search_results(db, user, latest_search.id, min_score=60.0)[:limit]
+        if not recs:
+            recs = cls.get_search_results(db, user, latest_search.id)[:limit]
+        return recs

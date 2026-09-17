@@ -192,17 +192,19 @@ class DeterministicMockAIProvider(BaseAIProvider):
         missing_skills: List[str],
         overall_score: float,
     ) -> str:
-        matched_str = f"experience in {', '.join(matched_skills[:3])}" if matched_skills else "general technical alignment"
-        if missing_skills:
-            gap_str = f"Key skills to highlight or develop include {', '.join(missing_skills[:2])}."
+        level = "strong" if overall_score >= 75 else "solid" if overall_score >= 50 else "exploratory"
+        
+        if matched_skills:
+            strength_desc = f"Strong alignment for '{job_title}' driven by your hands-on background in {', '.join(matched_skills[:3])}."
         else:
-            gap_str = "Your profile addresses all key requirements detected in the job posting."
+            strength_desc = f"Initial alignment for '{job_title}' based on core engineering competencies and foundational domain overlap."
 
-        level = "strong" if overall_score >= 80 else "good" if overall_score >= 60 else "moderate"
-        return (
-            f"This role is a {level} match ({overall_score:.0f}%) because your resume demonstrates {matched_str}. "
-            f"{gap_str}"
-        )
+        if missing_skills:
+            gap_desc = f"Target requirements to highlight or expand include: {', '.join(missing_skills[:3])}."
+        else:
+            gap_desc = "Your profile directly satisfies all primary required technical competencies."
+
+        return f"{strength_desc} Overall {level} match ({overall_score:.0f}%). {gap_desc}"
 
 
 class OpenAIProvider(BaseAIProvider):

@@ -16,6 +16,8 @@ class ResumeResponse(BaseModel):
     is_primary: bool
     version_number: int = 1
     parser_status: str = "pending"
+    sections_count: int = 0
+    skills_count: int = 0
     created_at: datetime
     updated_at: datetime
 

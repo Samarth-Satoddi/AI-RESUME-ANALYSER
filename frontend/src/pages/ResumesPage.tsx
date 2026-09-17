@@ -26,27 +26,16 @@ export const ResumesPage: React.FC = () => {
     fetchResumes();
   }, []);
 
-  const handleUploadSuccess = (newResume: Resume) => {
-    // If the new resume is marked primary, unset primary on others locally
-    setResumes((prev) => {
-      if (newResume.is_primary) {
-        return [newResume, ...prev.map((r) => ({ ...r, is_primary: false }))];
-      }
-      return [newResume, ...prev];
-    });
+  const handleUploadSuccess = () => {
+    fetchResumes();
   };
 
-  const handleDelete = (id: string) => {
-    setResumes((prev) => prev.filter((r) => r.id !== id));
+  const handleDelete = () => {
+    fetchResumes();
   };
 
-  const handleSetPrimary = (updated: Resume) => {
-    setResumes((prev) =>
-      prev.map((r) => ({
-        ...r,
-        is_primary: r.id === updated.id,
-      }))
-    );
+  const handleSetPrimary = () => {
+    fetchResumes();
   };
 
   return (

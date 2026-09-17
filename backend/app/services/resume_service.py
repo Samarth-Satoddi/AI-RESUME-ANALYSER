@@ -28,6 +28,8 @@ class ResumeService:
         active_version = resume.versions[-1] if resume.versions else None
         version_num = active_version.version_number if active_version else 1
         parser_status = active_version.parser_status if active_version else "pending"
+        sections_count = len(active_version.sections) if active_version and active_version.sections else 0
+        skills_count = len(active_version.skills) if active_version and active_version.skills else 0
 
         return ResumeResponse(
             id=resume.id,
@@ -38,6 +40,8 @@ class ResumeService:
             is_primary=resume.is_primary,
             version_number=version_num,
             parser_status=parser_status,
+            sections_count=sections_count,
+            skills_count=skills_count,
             created_at=resume.created_at,
             updated_at=resume.updated_at,
         )
@@ -105,6 +109,29 @@ class ResumeService:
                     )
                     db.add(new_sec)
                 logger.info(f"resume_sections_detected count={len(sections)} resume_id={new_resume.id}")
+
+                # Extract and persist skills immediately
+                try:
+                    from app.services.skill_extractor import SkillExtractor
+                    skill_extractor = SkillExtractor.get_instance()
+                    extracted_skills = skill_extractor.extract_skills(extracted_text)
+                    skill_extractor.save_resume_skills(db, version_1, extracted_skills)
+                    logger.info(f"resume_skills_extracted count={len(extracted_skills)} resume_id={new_resume.id}")
+                except Exception as skill_err:
+                    logger.warning(f"resume_skill_extraction_failed resume_id={new_resume.id}: {str(skill_err)}")
+
+                # Extract and persist entities immediately
+                try:
+                    from app.services.entity_extractor import EntityExtractor
+                    entity_extractor = EntityExtractor()
+                    entity_extractor.process_and_save_entities(
+                        db=db,
+                        resume_version=version_1,
+                        sections=version_1.sections,
+                        full_text=extracted_text,
+                    )
+                except Exception as ent_err:
+                    logger.warning(f"resume_entity_extraction_failed resume_id={new_resume.id}: {str(ent_err)}")
             except Exception as parse_err:
                 version_1.parser_status = "failed"
                 logger.warning(f"resume_initial_parse_failed resume_id={new_resume.id}: {str(parse_err)}")
@@ -156,11 +183,19 @@ class ResumeService:
                 db.add(new_sec)
                 created_sections.append(new_sec)
 
+            # 5. Remove previous skills and extract fresh skills
+            from app.db.models.resume import ResumeSkill
+            db.query(ResumeSkill).filter(ResumeSkill.resume_version_id == active_version.id).delete()
+            from app.services.skill_extractor import SkillExtractor
+            skill_extractor = SkillExtractor.get_instance()
+            extracted_skills = skill_extractor.extract_skills(extracted_text)
+            skill_extractor.save_resume_skills(db, active_version, extracted_skills)
+
             active_version.parser_status = "completed"
             db.commit()
             db.refresh(active_version)
 
-            logger.info(f"resume_reparsed_successfully resume_id={resume_id} sections={len(created_sections)}")
+            logger.info(f"resume_reparsed_successfully resume_id={resume_id} sections={len(created_sections)} skills={len(extracted_skills)}")
 
             return ResumeSectionsListResponse(
                 resume_id=resume.id,
@@ -238,6 +273,23 @@ class ResumeService:
             .order_by(Resume.created_at.desc())
             .all()
         )
+
+        # Ensure any completed resume with missing skills is populated
+        updated = False
+        for r in resumes:
+            active_version = r.versions[-1] if r.versions else None
+            if active_version and active_version.parser_status == "completed" and active_version.extracted_text and not active_version.skills:
+                try:
+                    from app.services.skill_extractor import SkillExtractor
+                    skill_extractor = SkillExtractor.get_instance()
+                    extracted_skills = skill_extractor.extract_skills(active_version.extracted_text)
+                    skill_extractor.save_resume_skills(db, active_version, extracted_skills)
+                    updated = True
+                except Exception as e:
+                    logger.warning(f"Failed to auto-extract skills for resume {r.id}: {e}")
+        if updated:
+            db.commit()
+
         return [cls.to_response_dto(r) for r in resumes]
 
     @classmethod
@@ -291,11 +343,24 @@ class ResumeService:
         stored_file = target.storage_path
         was_primary = target.is_primary
 
+        # Detach any job search runs referencing this resume
+        try:
+            from app.db.models.job_search import JobSearch
+            db.query(JobSearch).filter(JobSearch.resume_id == resume_id).update({"resume_id": None})
+            db.flush()
+        except Exception as e:
+            logger.debug(f"Detaching job searches for resume {resume_id}: {e}")
+
         db.delete(target)
         db.commit()
 
-        # Remove physical file
-        StorageService.delete_file(stored_file)
+        # Remove physical file safely
+        if stored_file:
+            try:
+                StorageService.delete_file(stored_file)
+            except Exception as exc:
+                logger.warning(f"Could not remove physical file {stored_file}: {exc}")
+
         logger.info(f"resume_deleted resume_id={resume_id} user={user.id}")
 
         # If deleted resume was primary, designate the most recent remaining resume as primary

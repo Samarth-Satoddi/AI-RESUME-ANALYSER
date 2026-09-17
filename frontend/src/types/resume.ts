@@ -7,6 +7,8 @@ export interface Resume {
   is_primary: boolean;
   version_number: number;
   parser_status: 'pending' | 'processing' | 'completed' | 'failed' | string;
+  sections_count: number;
+  skills_count: number;
   created_at: string;
   updated_at: string;
 }

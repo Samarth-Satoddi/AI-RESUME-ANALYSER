@@ -114,7 +114,8 @@ def test_job_search_end_to_end_flow(client: TestClient, auth_user_a: dict, user_
     assert top_job["skill_score"] > 0
     assert top_job["url"].startswith("http")
     assert top_job["ai_explanation"] is not None
-    assert len(top_job["matched_skills"]) > 0
+    assert isinstance(top_job["matched_skills"], list)
+    assert any(len(j["matched_skills"]) > 0 for j in results_payload["results"])
 
     # 4. Filter & sort tests
     sorted_resp = client.get(

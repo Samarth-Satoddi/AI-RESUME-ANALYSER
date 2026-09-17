@@ -2,7 +2,7 @@ import hashlib
 import html
 import re
 from typing import Optional, Tuple
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 from app.job_search.schemas import NormalizedJobListing, RawJobListing
 
@@ -13,27 +13,65 @@ class JobNormalizer:
     into consistent internal representations without ever fabricating missing fields.
     """
 
-    # Noise patterns commonly found in raw job titles
     TITLE_NOISE_REGEX = re.compile(
         r"(?:\[(?:remote|hybrid|onsite|contract|full[- ]time|urgent)\]|\((?:m/w/d|f/m/d|remote|hybrid|h/f)\)|[-–/]\s*(?:req|job ID|remote|id)[\s\d\w#-]*$)",
         re.IGNORECASE,
     )
 
     SAFE_SCHEMES = {"http", "https"}
+    TRACKING_PARAMS = {
+        "utm_source", "utm_medium", "utm_campaign", "utm_term",
+        "utm_content", "fbclid", "gclid", "ref", "_hsenc", "_hsmi",
+    }
 
     @classmethod
     def sanitize_url(cls, url: Optional[str]) -> Optional[str]:
-        """Validate URL safety strictly allowing only http and https protocols."""
+        """
+        Validate URL safety: strictly permit only http and https protocols.
+        Reject javascript:, data:, file:, etc.
+        Canonicalize URL by stripping marketing tracking parameters while preserving job IDs.
+        """
         if not url or not isinstance(url, str):
             return None
         cleaned = url.strip()
         try:
             parsed = urlparse(cleaned)
-            if parsed.scheme.lower() in cls.SAFE_SCHEMES and parsed.netloc:
-                return cleaned
+            if parsed.scheme.lower() not in cls.SAFE_SCHEMES or not parsed.netloc:
+                return None
+
+            # Strip tracking parameters while retaining job parameters
+            query_dict = parse_qs(parsed.query, keep_blank_values=False)
+            filtered_query = {
+                k: v for k, v in query_dict.items()
+                if k.lower() not in cls.TRACKING_PARAMS
+            }
+            clean_query = urlencode(filtered_query, doseq=True)
+
+            canonical = urlunparse((
+                parsed.scheme.lower(),
+                parsed.netloc.lower(),
+                parsed.path.rstrip("/") if parsed.path != "/" else "/",
+                parsed.params,
+                clean_query,
+                "",  # strip fragments
+            ))
+            return canonical
         except Exception:
             return None
-        return None
+
+    @classmethod
+    def format_source_display(cls, source: str) -> str:
+        """Map internal source keys to clean, user-facing branded names."""
+        s = (source or "").lower()
+        if "greenhouse" in s:
+            return "Greenhouse"
+        elif "remotive" in s:
+            return "Remotive"
+        elif "arbeitnow" in s:
+            return "Arbeitnow"
+        elif "mock" in s:
+            return "Development Data"
+        return source.capitalize() if source else "External"
 
     @classmethod
     def normalize_title(cls, title: str) -> str:
@@ -43,7 +81,6 @@ class JobNormalizer:
         cleaned = html.unescape(title)
         cleaned = cls.TITLE_NOISE_REGEX.sub("", cleaned)
         cleaned = re.sub(r"\s+", " ", cleaned).strip()
-        # Clean leading/trailing punctuation
         cleaned = cleaned.strip("-–/|:,")
         return cleaned.strip() or "Untitled Opportunity"
 
@@ -71,7 +108,7 @@ class JobNormalizer:
 
         if "hybrid" in combined:
             remote_type = "hybrid"
-        elif "remote" in combined or "work from home" in combined or "anywhere" in combined:
+        elif "remote" in combined or "work from home" in combined or "anywhere" in combined or "worldwide" in combined:
             remote_type = "remote"
         elif "on-site" in combined or "onsite" in combined or "in-office" in combined:
             remote_type = "on-site"
@@ -83,7 +120,7 @@ class JobNormalizer:
         cleaned_loc = None
         if location:
             cleaned_loc = re.sub(r"\s+", " ", location).strip()
-            if cleaned_loc.lower() in {"remote", "anywhere", "work from home"}:
+            if cleaned_loc.lower() in {"remote", "anywhere", "work from home", "worldwide"}:
                 cleaned_loc = "Remote"
 
         return cleaned_loc, remote_type
@@ -109,22 +146,26 @@ class JobNormalizer:
         """Strip HTML tags while preserving line breaks and basic formatting."""
         if not desc:
             return ""
-        # Convert <br>, <p>, <li> to newlines
         text = re.sub(r"<(?:br\s*/?|/p|/li)>", "\n", desc, flags=re.IGNORECASE)
-        # Remove remaining HTML tags
         text = re.sub(r"<[^>]+>", "", text)
         text = html.unescape(text)
-        # Normalize excessive blank lines
         text = re.sub(r"\n{3,}", "\n\n", text)
         return text.strip()
 
     @classmethod
-    def compute_dedup_hash(cls, company: Optional[str], title: str, location: Optional[str]) -> str:
+    def compute_dedup_hash(
+        cls,
+        company: Optional[str],
+        title: str,
+        location: Optional[str],
+        canonical_url: Optional[str] = None,
+    ) -> str:
         """Compute deterministic fingerprint for deduplication."""
         c = (company or "").lower().strip()
         t = re.sub(r"[^a-z0-9]", "", title.lower())
         l = (location or "").lower().strip()
-        raw_key = f"{c}|{t}|{l}"
+        u = (canonical_url or "").lower().strip()
+        raw_key = f"{c}|{t}|{l}|{u}"
         return hashlib.sha256(raw_key.encode("utf-8")).hexdigest()
 
     @classmethod
@@ -140,7 +181,8 @@ class JobNormalizer:
         safe_url = cls.sanitize_url(raw.url)
         clean_desc = cls.sanitize_description(raw.description)
         emp_type = cls.normalize_employment_type(raw.employment_type)
-        dedup_hash = cls.compute_dedup_hash(norm_company, norm_title, norm_loc)
+        dedup_hash = cls.compute_dedup_hash(norm_company, norm_title, norm_loc, safe_url)
+        display_source = cls.format_source_display(raw.source)
 
         # Validate salary ranges
         sal_min = raw.salary_min
@@ -150,7 +192,7 @@ class JobNormalizer:
 
         return NormalizedJobListing(
             external_id=raw.external_id,
-            source=raw.source,
+            source=display_source,
             title=norm_title,
             company=norm_company,
             location=norm_loc,

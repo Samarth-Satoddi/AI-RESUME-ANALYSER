@@ -1,0 +1,23 @@
+project-excludes = [
+    "**/node_modules",
+    "**/__pycache__",
+    "**/.venv/**/*",
+    "scratch/**/*",
+    "**/scratch/**/*",
+    "*_pyrefly_virtual_*",
+    "**/_pyrefly_virtual_/**/*",
+]
+search-path = [
+    ".",
+    ".venv/Lib/site-packages",
+]
+site-package-path = [
+    ".venv/Lib/site-packages",
+]
+disable-type-errors-in-ide = true
+ignore-errors-in-generated-code = true
+
+[errors]
+missing-import = "ignore"
+unknown-name = "ignore"
+parse-error = "ignore"

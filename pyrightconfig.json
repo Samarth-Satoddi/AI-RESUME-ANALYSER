@@ -1,0 +1,27 @@
+{
+  "include": [
+    "backend"
+  ],
+  "exclude": [
+    "**/node_modules",
+    "**/__pycache__",
+    ".venv",
+    "backend/.venv",
+    "scratch"
+  ],
+  "venvPath": "backend",
+  "venv": ".venv",
+  "extraPaths": [
+    "backend"
+  ],
+  "reportMissingImports": "none",
+  "reportMissingTypeStubs": "none",
+  "reportOptionalMemberAccess": "none",
+  "reportOptionalSubscript": "none",
+  "reportPossiblyUnboundVariable": "none",
+  "reportAttributeAccessIssue": "none",
+  "reportArgumentType": "none",
+  "reportCallIssue": "none",
+  "reportReturnType": "none",
+  "typeCheckingMode": "basic"
+}

@@ -121,3 +121,80 @@ npm run build
 * **Path Traversal Protection**: Uploaded file paths are sanitized with `secure_filename` to prevent directory traversal.
 * **Magic Byte Validation**: Uploaded documents are verified against true file signatures rather than spoofable client-side MIME types.
 * **No Fact Fabrication**: AI prompts explicitly enforce truth preservation, prohibiting the generation of unverified employers, numbers, or technologies.
+
+---
+
+## 🤖 Local LLM-Powered AI Resume Assistant
+
+The platform includes an **AI Resume Assistant** powered by open-source instruction-tuned models from Hugging Face / Ollama running 100% locally on your machine with zero external paid APIs.
+
+### 1. Installation & Dependencies
+Install local inference packages inside `backend/.venv`:
+```bash
+pip install torch transformers accelerate
+```
+
+### 2. Model Configuration
+Configure the assistant in `backend/.env`:
+```env
+# Hugging Face / Local Model Name
+HF_MODEL_NAME=qwen2.5:7b
+# Device selection: 'auto', 'cuda', or 'cpu'
+HF_DEVICE=auto
+# Max tokens to generate
+HF_MAX_NEW_TOKENS=512
+# Sampling temperature (low for factual adherence)
+HF_TEMPERATURE=0.2
+HF_TOP_P=0.9
+```
+
+Supported options:
+- **Local Ollama Models**: e.g., `qwen2.5:7b`, `llama3.1:latest`, `qwen2.5-coder:7b`, `mistral:latest`.
+- **Hugging Face Hub Repositories**: e.g., `Qwen/Qwen2.5-1.5B-Instruct`, `Qwen/Qwen2.5-3B-Instruct`, `Qwen/Qwen2.5-7B-Instruct`.
+
+### 3. Model Download & Cache Management
+- Models are loaded once into memory on application startup or first query, avoiding redundant re-loads per request.
+- Hugging Face weights are cached locally in `~/.cache/huggingface/hub`.
+- Ollama weights are read from local Ollama storage (`~/.ollama/models`).
+
+### 4. GPU/CPU Acceleration & Hardware Requirements
+- **CUDA GPU Support**: Auto-detects NVIDIA GPUs (e.g. RTX 3050 Laptop GPU / RTX 3060 / 40-series). Loads in `float16` for high throughput.
+- **CPU Fallback**: Gracefully falls back to CPU using `float32` if CUDA is unavailable.
+- **VRAM Guidelines**:
+  - `Qwen/Qwen2.5-1.5B-Instruct`: ~2 GB VRAM / 4 GB RAM.
+  - `qwen2.5:7b` (4-bit quantized / GGUF): ~4.5 GB VRAM / 8 GB RAM.
+
+### 5. Resume Context Builder
+The context builder pulls verified database records strictly belonging to the authenticated user:
+- Candidate identity and professional summary
+- Extracted & normalized skills grouped by category
+- Verified work experience, achievements, and responsibilities
+- Degrees, institutions, and fields of study
+- Technical projects and certifications
+- Deterministic ATS score and keyword gap analysis
+- Target job requirements and match scores (when job selected)
+
+### 6. Multi-Signal Intent Detection
+User inquiries are routed to dedicated prompt strategies without treating questions as bullet points:
+- `RESUME_QUESTION`: Questions regarding resume quality, sections, or overall advice (e.g. *"What should I improve in my resume?"*, *"What i improve in my resume"*).
+- `BULLET_REWRITE`: Action-verb and STAR refactoring (e.g. *"Developed a Python API"*, *"Improve this bullet: ..."*).
+- `ATS_QUESTION`: Explanations of deterministic ATS score and keyword density.
+- `SKILL_QUESTION`: Extracted skills and identified gap analysis.
+- `JOB_MATCH_QUESTION`: Explanation of deterministic match percentage against a job.
+- `GENERAL_CHAT`: Natural conversational courtesies and capabilities overview.
+
+### 7. Anti-Hallucination & Truth Grounding
+- **Database/NLP is Truth**: Scores, skills, and match percentages are computed by deterministic Python engines and provided to the LLM as facts.
+- **Zero Metric Fabrication**: If the candidate's input lacks numbers (percentages, users, revenue), the assistant refactors using qualitative impact or prompts the candidate for actual metrics, never inventing fake numbers.
+- **Unknown Skills**: If an inquiry asks about an unlisted skill (e.g. *"Do I have Kubernetes experience?"*), the assistant explicitly states it does not appear on the resume.
+
+### 8. Running the Assistant
+1. Ensure the FastAPI backend is running:
+   ```bash
+   cd backend && uvicorn app.main:app --port 8000
+   ```
+2. Start the React frontend:
+   ```bash
+   cd frontend && npm run dev
+   ```
+3. Open `http://localhost:5173/analysis`, select an uploaded resume, and ask any question or refactor any bullet point.

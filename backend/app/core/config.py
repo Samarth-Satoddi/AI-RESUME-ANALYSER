@@ -45,11 +45,20 @@ class Settings(BaseSettings):
     ]
 
     # AI & Embeddings
-    AI_PROVIDER: str = "heuristic"  # 'heuristic', 'openai', 'anthropic'
+    AI_PROVIDER: str = "heuristic"  # 'heuristic', 'openai', 'anthropic', 'huggingface'
     OPENAI_API_KEY: str = ""
     OPENAI_MODEL: str = "gpt-4o-mini"
     ANTHROPIC_API_KEY: str = ""
     EMBEDDING_MODEL_NAME: str = "sentence-transformers/all-MiniLM-L6-v2"
+
+    # Hugging Face Local LLM Configuration
+    HF_MODEL_NAME: str = "Qwen/Qwen2.5-1.5B-Instruct"
+    HF_DEVICE: str = "auto"  # 'cuda', 'cpu', or 'auto'
+    HF_MAX_NEW_TOKENS: int = 512
+    HF_TEMPERATURE: float = 0.2
+    HF_TOP_P: float = 0.9
+    HF_TORCH_DTYPE: str = "auto"  # 'auto', 'float16', 'bfloat16', 'float32'
+    HF_LOAD_IN_4BIT: bool = False
 
     # Scoring Weights (Configurable)
     WEIGHT_SKILL: float = 0.35
@@ -60,7 +69,8 @@ class Settings(BaseSettings):
 
     # Job Search Agent Configuration
     JOB_SEARCH_ENABLED: bool = True
-    JOB_SEARCH_PROVIDER: str = "mock"  # 'mock', 'remotive', 'arbeitnow', 'adzuna', 'custom'
+    JOB_SEARCH_SOURCES: str = "greenhouse,remotive,arbeitnow"  # e.g. "greenhouse,remotive,arbeitnow" or "mock"
+    JOB_SEARCH_PROVIDER: str = "real"  # Legacy alias maintained for backward compatibility
     JOB_SEARCH_API_KEY: str = ""
     JOB_SEARCH_API_URL: str = ""
     JOB_SEARCH_MAX_SOURCES: int = 5

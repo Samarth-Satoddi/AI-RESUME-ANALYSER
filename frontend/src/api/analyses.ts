@@ -159,4 +159,20 @@ export const analysisApi = {
     const { data } = await apiClient.get(`/resumes/${resumeId}/entities`);
     return data;
   },
+
+  sendChatMessage: async (payload: {
+    resume_id: string;
+    message: string;
+    job_id?: string;
+    conversation_history?: { role: string; content: string }[];
+  }): Promise<{
+    intent: string;
+    answer: string;
+    resume_id: string;
+    sources: { resume: boolean; analysis: boolean; job: boolean };
+    bullet_improvement?: BulletImprovement;
+  }> => {
+    const { data } = await apiClient.post('/chat', payload);
+    return data;
+  },
 };
